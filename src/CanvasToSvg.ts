@@ -163,9 +163,9 @@ export class CanvasToSvg {
   /**
    * Applies the current styles to the current SVG element. On "ctx.fill" or "ctx.stroke"
    */
-  __applyStyleToCurrentElement(type: "stroke" | "fill") {
+  __applyStyleToElement(type: "stroke" | "fill") {
     if (!this.__currentElement) return;
-    let currentElement = this.__currentElement;
+    let element = this.__currentElement;
 
     let keys = Object.keys(STYLES),
       i,
@@ -183,19 +183,20 @@ export class CanvasToSvg {
           //pattern
           if (value.__ctx) {
             //copy over defs
-            while (value.__ctx.__defs.childNodes.length) {
-              id = value.__ctx.__defs.childNodes[0].getAttribute("id");
+           var len = value.__ctx.__defs.length;
+           for (var idx = 0; idx < len; idx++) {
+              id = value.__ctx.__defs.childNodes[idx].getAttribute("id");
               this.__ids[id] = id;
-              this.__defs.appendChild(value.__ctx.__defs.childNodes[0]);
+              this.__defs.appendChild(value.__ctx.__defs.childNodes[idx]);
             }
           }
-          currentElement.setAttribute(
+          element.setAttribute(
             style.apply,
             format("url(#{id})", { id: value.__root.getAttribute("id") })
           );
         } else if (value instanceof CanvasGradient) {
           //gradient
-          currentElement.setAttribute(
+          element.setAttribute(
             style.apply,
             format("url(#{id})", { id: value.__root.getAttribute("id") })
           );
@@ -209,7 +210,7 @@ export class CanvasToSvg {
               /rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d?\.?\d*)\s*\)/gi;
             matches = regex.exec(value);
             if (matches) {
-              currentElement.setAttribute(
+              element.setAttribute(
                 style.svgAttr,
                 format("rgb({r},{g},{b})", {
                   r: matches[1],
@@ -223,7 +224,7 @@ export class CanvasToSvg {
               if (globalAlpha != null) {
                 opacity *= globalAlpha;
               }
-              currentElement.setAttribute(
+              element.setAttribute(
                 style.svgAttr + "-opacity",
                 opacity.toString()
               );
@@ -232,13 +233,13 @@ export class CanvasToSvg {
             let attr = style.svgAttr;
             if (keys[i] === "globalAlpha") {
               attr = type + "-" + style.svgAttr;
-              if (currentElement.getAttribute(attr)) {
+              if (element.getAttribute(attr)) {
                 //fill-opacity or stroke-opacity has already been set by stroke or fill.
                 continue;
               }
             }
             //otherwise only update attribute if right type, and not svg default
-            currentElement.setAttribute(attr, value);
+            element.setAttribute(attr, value);
           }
         }
       }
@@ -615,20 +616,23 @@ export class CanvasToSvg {
       this.__currentElement.setAttribute("paint-order", "fill stroke markers");
     }
     this.__applyCurrentDefaultPath();
-    this.__applyStyleToCurrentElement("stroke");
+    this.__applyStyleToElement("stroke");
   }
 
   /**
    * Sets fill properties on the current element
    */
-  fill() {
+  fill(fillRule?: string) {
     debugger;
     if (!this.__currentElement) return;
     if (this.__currentElement.nodeName === "path") {
       this.__currentElement.setAttribute("paint-order", "stroke fill markers");
+      if (fillRule === "evenodd") {
+        this.__currentElement.setAttribute("fill-rule", "evenodd");
+      }
     }
     this.__applyCurrentDefaultPath();
-    this.__applyStyleToCurrentElement("fill");
+    this.__applyStyleToElement("fill");
   }
 
   /**
@@ -665,7 +669,7 @@ export class CanvasToSvg {
     parent = this.__closestGroupOrSvg();
     (parent as Node).appendChild(rect);
     this.__currentElement = rect;
-    this.__applyStyleToCurrentElement("fill");
+    this.__applyStyleToElement("fill");
   }
 
   /**
@@ -690,7 +694,7 @@ export class CanvasToSvg {
     parent = this.__closestGroupOrSvg();
     (parent as Node).appendChild(rect);
     this.__currentElement = rect;
-    this.__applyStyleToCurrentElement("stroke");
+    this.__applyStyleToElement("stroke");
   }
 
   /**
@@ -791,7 +795,7 @@ export class CanvasToSvg {
    */
   __parseFont() {
     let regex =
-      /^\s*(?=(?:(?:[-a-z]+\s*){0,2}(italic|oblique))?)(?=(?:(?:[-a-z]+\s*){0,2}(small-caps))?)(?=(?:(?:[-a-z]+\s*){0,2}(bold(?:er)?|lighter|[1-9]00))?)(?:(?:normal|\1|\2|\3)\s*){0,3}((?:xx?-)?(?:small|large)|medium|smaller|larger|[.\d]+(?:\%|in|[cem]m|ex|p[ctx]))(?:\s*\/\s*(normal|[.\d]+(?:\%|in|[cem]m|ex|p[ctx])))?\s*([-,\'\"\sa-z0-9]+?)\s*$/i;
+      /^\s*(?=(?:(?:[-a-z]+\s*){0,2}(italic|oblique))?)(?=(?:(?:[-a-z]+\s*){0,2}(small-caps))?)(?=(?:(?:[-a-z]+\s*){0,2}(bold(?:er)?|lighter|[1-9]00))?)(?:(?:normal|\1|\2|\3)\s*){0,3}((?:xx?-)?(?:small|large)|medium|smaller|larger|[.\d]+(?:\%|in|[cem]m|ex|p[ctx]))(?:\s*\/\s*(normal|[.\d]+(?:\%|in|[cem]m|ex|p[ctx])))?\s*([-_,\'\"\sa-z0-9]+?)\s*$/i;     
     let fontPart = regex.exec(this.font);
     if (!fontPart) return;
     let data = {
@@ -863,7 +867,7 @@ export class CanvasToSvg {
 
     textElement.appendChild(this.__document.createTextNode(text));
     this.__currentElement = textElement;
-    this.__applyStyleToCurrentElement(action);
+    this.__applyStyleToElement(action);
     (parent as Node).appendChild(this.__wrapTextLink(font, textElement));
   }
 
@@ -1099,6 +1103,42 @@ export class CanvasToSvg {
   }
 
   /**
+   * Generates an SVG pattern tag
+   */
+   createPatternSVG(image: any, repetition: any) {
+    let pattern = this.__document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "pattern"
+      ),
+      id = randomString(this.__ids),
+      img;
+    pattern.setAttribute("id", id);
+    pattern.setAttribute("width", image.width);
+    pattern.setAttribute("height", image.height);
+    pattern.setAttribute("patternUnits", "userSpaceOnUse");
+    
+    // eg patternTransform="rotate(35)"
+    // don't need to include for undefined or zero!
+    if (image.angle) {
+      pattern.setAttribute("patternTransform", "rotate("+image.angle+")");
+    }
+    if (image.path && image.style) {
+      // assume SVG fill pattern
+      let path = this.__document.createElementNS("http://www.w3.org/2000/svg", "path");
+      // eg
+      //path.setAttribute("d", "M34.64101615137754,40.0L34.64101615137754,80.0L0.0,100.0L0.0,120.0M34.64101615137754,80.0L69.28203230275508,100.0L69.28203230275508,120.0M0.0,0.0L0.0,20.0L34.64101615137754,40.0L69.28203230275508,20.0L69.28203230275508,0.0")
+      path.setAttribute("d", image.path);
+      // eg
+      //path.setAttribute("style", "stroke:black; stroke-width:1");
+      path.setAttribute("style", image.style);
+      path.setAttribute("fill", image.fill);
+      pattern.appendChild(path);
+      this.__defs.appendChild(pattern);
+    }
+    return new CanvasPattern(pattern, this);
+  }
+
+  /**
    * Generates a pattern tag
    */
   createPattern(image: any, repetition: any) {
@@ -1111,6 +1151,7 @@ export class CanvasToSvg {
     pattern.setAttribute("id", id);
     pattern.setAttribute("width", image.width);
     pattern.setAttribute("height", image.height);
+    pattern.setAttribute("patternUnits", "userSpaceOnUse");
     if (image.nodeName === "CANVAS" || image.nodeName === "IMG") {
       img = this.__document.createElementNS(
         "http://www.w3.org/2000/svg",

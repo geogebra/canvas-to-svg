@@ -5,7 +5,10 @@
  *  Licensed under the MIT license:
  *  http://www.opensource.org/licenses/mit-license.php
  *
- *  Author:
+  *  https://raw.githubusercontent.com/mudcube/canvas2svg/c7bd3747891909ba897e03ee8ff6b1a3c03e6338/canvas2svg.js
+ *   changes made for GeoGebra
+ *  
+ *   Author:
  *  Kerry Liu
  *
  *  Copyright (c) 2014 Gliffy Inc.
