@@ -1103,42 +1103,6 @@ export class CanvasToSvg {
   }
 
   /**
-   * Generates an SVG pattern tag
-   */
-   createPatternSVG(image: any, repetition: any) {
-    let pattern = this.__document.createElementNS(
-        "http://www.w3.org/2000/svg",
-        "pattern"
-      ),
-      id = randomString(this.__ids),
-      img;
-    pattern.setAttribute("id", id);
-    pattern.setAttribute("width", image.width);
-    pattern.setAttribute("height", image.height);
-    pattern.setAttribute("patternUnits", "userSpaceOnUse");
-    
-    // eg patternTransform="rotate(35)"
-    // don't need to include for undefined or zero!
-    if (image.angle) {
-      pattern.setAttribute("patternTransform", "rotate("+image.angle+")");
-    }
-    if (image.path && image.style) {
-      // assume SVG fill pattern
-      let path = this.__document.createElementNS("http://www.w3.org/2000/svg", "path");
-      // eg
-      //path.setAttribute("d", "M34.64101615137754,40.0L34.64101615137754,80.0L0.0,100.0L0.0,120.0M34.64101615137754,80.0L69.28203230275508,100.0L69.28203230275508,120.0M0.0,0.0L0.0,20.0L34.64101615137754,40.0L69.28203230275508,20.0L69.28203230275508,0.0")
-      path.setAttribute("d", image.path);
-      // eg
-      //path.setAttribute("style", "stroke:black; stroke-width:1");
-      path.setAttribute("style", image.style);
-      path.setAttribute("fill", image.fill);
-      pattern.appendChild(path);
-      this.__defs.appendChild(pattern);
-    }
-    return new CanvasPattern(pattern, this);
-  }
-
-  /**
    * Generates a pattern tag
    */
   createPattern(image: any, repetition: any) {
