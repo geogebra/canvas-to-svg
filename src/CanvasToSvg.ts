@@ -1098,6 +1098,9 @@ export class CanvasToSvg {
           ? image.toDataURL()
           : image.getAttribute("src")
       );
+      if (this.globalAlpha != 1) {
+          svgImage.style.opacity = this.globalAlpha;
+      }
       (parent as Node).appendChild(svgImage);
     }
   }
